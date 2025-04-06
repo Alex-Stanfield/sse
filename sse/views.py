@@ -17,9 +17,9 @@ def sse_view(request):
             
             # Standard JSON data for Alpine.js
             data = {"count": count, "time": current_time}
-            ypayld = f'event: message\ndata: {json.dumps(data)}\n\n'
-            print(ypayld)  # Debugging line to check the JSON data
-            yield ypayld #f'event: message\ndata: {json.dumps(data)}\n\n'
+            payload = f'event: message\ndata: {json.dumps(data)}\n\n'
+            # print(payload)  # Debugging line to check the JSON data
+            yield payload #f'event: message\ndata: {json.dumps(data)}\n\n'
             
             # HTML content for HTMX
             html_content = render_to_string('sse_update.html', {'count': count, 'time': current_time}).replace('\n', '')
