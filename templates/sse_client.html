@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Example</title>
+    <script src="https://unpkg.com/htmx.org"></script>
+    <script src="https://unpkg.com/alpinejs/dist/cdn.min.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #events {
+            height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+        .event {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .event:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>Django Server-Sent Events Example</h1>
+    <p>This page receives real-time updates from the Django server using SSE.</p>
+    
+    <div class="controls">
+        <button id="connect">Connect</button>
+        <button id="disconnect" disabled>Disconnect</button>
+        <div id="status">Disconnected</div>
+    </div>
+
+    <div class="demos">
+        <h2>Standard SSE Events</h2>
+        <div id="events"></div>
+        
+        <h2>Alpine.js Integration</h2>
+        <div x-data="{ count: 0, time: '-' }">
+            <p>Count: <span x-text="count"></span></p>
+            <p>Time: <span x-text="time"></span></p>
+        </div>
+        
+        <h2>HTMX Integration</h2>
+        <div hx-sse="connect:/events/">
+            <!-- This div will listen for the 'htmx-update' event from the SSE connection -->
+            <div hx-sse="swap:htmx-update" id="htmx-target">
+                Waiting for updates...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        const statusElement = document.getElementById('status');
+        const eventsElement = document.getElementById('events');
+        const connectButton = document.getElementById('connect');
+        const disconnectButton = document.getElementById('disconnect');
+        
+        // Alpine.js setup - get a reference to the component
+        let alpineComponent;
+        document.addEventListener('alpine:init', () => {
+            // You can access Alpine outside of components
+            Alpine.store('sse', {
+                count: 0,
+                time: '-'
+            });
+        });
+
+        function connect() {
+            if (eventSource) {
+                return;
+            }
+            
+            eventsElement.innerHTML = '';
+            statusElement.textContent = 'Connected';
+            connectButton.disabled = true;
+            disconnectButton.disabled = false;
+            
+            // Create EventSource object to receive events
+            eventSource = new EventSource('/events/');
+            
+            // Handler for standard message events
+            eventSource.addEventListener('message', function(e) {
+                const data = JSON.parse(e.data);
+                
+                // Update standard display
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'event';
+                eventDiv.textContent = `Count: ${data.count}, Time: ${data.time}`;
+                eventsElement.appendChild(eventDiv);
+                eventsElement.scrollTop = eventsElement.scrollHeight;
+                
+                // Update Alpine.js data store
+                Alpine.store('sse').count = data.count;
+                Alpine.store('sse').time = data.time;
+            });
+            
+            // Rest of the event handlers
+            eventSource.onopen = function() {
+                console.log('Connection opened');
+            };
+            
+            eventSource.onerror = function() {
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    statusElement.textContent = 'Connection closed';
+                } else {
+                    statusElement.textContent = 'Error occurred';
+                }
+                disconnect();
+            };
+        }
+        
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                statusElement.textContent = 'Disconnected';
+                connectButton.disabled = false;
+                disconnectButton.disabled = true;
+            }
+        }
+        
+        connectButton.addEventListener('click', connect);
+        disconnectButton.addEventListener('click', disconnect);
+    </script>
+</body>
+</html>
